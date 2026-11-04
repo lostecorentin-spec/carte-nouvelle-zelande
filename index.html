@@ -205,7 +205,8 @@ body.ff .maplibregl-ctrl-bottom-right{transform:translateX(-444px)}
   #side{overflow-y:auto;overscroll-behavior:contain}
   .pane,#p-tr{flex:none;overflow:visible}
   #stages{overflow:visible;flex:none}
-  #grab{display:block;height:20px;flex:none;position:sticky;top:0;z-index:2;background:var(--paper);width:100%}
+  #grab,header.top h1,header.top .sub{touch-action:none}
+  #grab{display:block;height:26px;flex:none;position:sticky;top:0;z-index:2;background:var(--paper);width:100%}
   #grab::after{content:"";position:absolute;left:50%;top:7px;width:44px;height:5px;margin-left:-22px;border-radius:9px;background:var(--line)}
   header.top{padding:0 16px 8px}
   h1{font-size:21px}
@@ -514,7 +515,15 @@ $('#dates').addEventListener('change',e=>{
 let qt;$('#q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=norm(e.target.value.trim());refresh()},120)});
 function tab(v){S.view=v;for(const k of['ex','ag','tr']){$('#t-'+k).setAttribute('aria-selected',k===v);$('#p-'+k).hidden=k!==v}$('#dates').hidden=v==='tr';$('#ftog').hidden=v==='tr';$('#side').classList.add('up')}
 for(const k of['ex','ag','tr'])$('#t-'+k).onclick=()=>tab(k);
-$('#grab').onclick=()=>{$('#side').classList.toggle('up');$('#side').scrollTop=0};
+let swiped=false;
+$('#grab').onclick=()=>{if(swiped){swiped=false;return}$('#side').classList.toggle('up');$('#side').scrollTop=0};
+/* Téléphone : le panneau suit le doigt, puis se cale en haut ou en bas */
+(()=>{const side=$('#side');let d=null;
+  side.addEventListener('pointerdown',e=>{if(!mobile()||!e.target.closest('#grab,header.top h1,header.top .sub'))return;d={id:e.pointerId,y:e.clientY,t:Date.now(),up:side.classList.contains('up'),h:side.offsetHeight,dy:0};swiped=false});
+  side.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id)return;d.dy=e.clientY-d.y;if(!swiped&&Math.abs(d.dy)<6)return;if(!swiped){swiped=true;side.setPointerCapture(d.id)}const bas=d.h-132,y=Math.min(bas,Math.max(0,(d.up?0:bas)+d.dy));side.style.transition='none';side.style.transform=`translateY(${y}px)`});
+  const fin=e=>{if(!d||e.pointerId!==d.id)return;const g=d,v=Math.abs(g.dy)/Math.max(1,Date.now()-g.t);d=null;side.style.transition='';side.style.transform='';if(!swiped)return;if(e.type==='pointerup'&&(Math.abs(g.dy)>60||v>.4)){side.classList.toggle('up',g.dy<0);side.scrollTop=0}};
+  side.addEventListener('pointerup',fin);side.addEventListener('pointercancel',fin);
+})();
 const setF=o=>{$('#side').classList.toggle('nof',!o);$('#ftog').setAttribute('aria-expanded',o);$('#ftog').textContent=o?'Masquer les filtres':'Filtres'};
 $('#ftog').onclick=()=>setF($('#side').classList.contains('nof'));setF(innerWidth>820);let wasM=innerWidth<=820;addEventListener('resize',()=>{const m=innerWidth<=820;if(m!==wasM){wasM=m;setF(!m)}});
 
