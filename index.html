@@ -398,7 +398,7 @@ const S={pole:null,cats:new Set(Array.isArray(savedCats)?savedCats.filter(k=>own
 let legsInfo=[],totals=null;
 
 /* Toast */
-let tt;function toast(m,undo){$('#tm').textContent=m+(store.ko&&!m.startsWith('Stockage')?' Stockage indisponible : ce choix ne sera pas gardé.':'');const u=$('#tu');u.hidden=!undo;u.onclick=()=>{undo&&undo();$('#toast').classList.remove('on')};$('#toast').classList.add('on');clearTimeout(tt);tt=setTimeout(()=>$('#toast').classList.remove('on'),4200)}
+let tt;function toast(m,undo,label){$('#tu').textContent=label||'Annuler';$('#tm').textContent=m+(store.ko&&!m.startsWith('Stockage')?' Stockage indisponible : ce choix ne sera pas gardé.':'');const u=$('#tu');u.hidden=!undo;u.onclick=()=>{undo&&undo();$('#toast').classList.remove('on')};$('#toast').classList.add('on');clearTimeout(tt);tt=setTimeout(()=>$('#toast').classList.remove('on'),4200)}
 
 /* Images : fondu à l'arrivée, repli si la photo manque */
 document.addEventListener('load',e=>{const t=e.target;if(t.tagName==='IMG'){t.classList.add('ok');t.parentElement.classList.add('done')}},true);
@@ -839,7 +839,13 @@ async function autoPrep(){
   await Promise.all([un(),un()]);store.set('offprep',{ok,n});offRun=false;offState();
   if(ok<n)planPrep(300000);
 }
-if(hasSW){navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});planPrep(4000);addEventListener('online',()=>planPrep(3000))}
+if(hasSW){
+  const hadC=!!navigator.serviceWorker.controller,t0=Date.now();
+  /* Une version déjà téléchargée en entier s'applique tout de suite si on vient d'ouvrir l'appli, sinon sur demande. */
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadC)return;if(Date.now()-t0<20000&&!S.sel&&!document.activeElement?.matches('input,textarea'))location.reload();else toast('Nouvelle version prête',()=>location.reload(),'Actualiser')});
+  const maj=()=>navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)maj()});
+  navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});planPrep(4000);addEventListener('online',()=>planPrep(3000))}
 addEventListener('offline',()=>toast('Hors ligne : la carte continue avec ce qui est téléchargé'));
 offState();
 $('#foot').textContent=D.meta.avertissement+' Activités et événements : recherche du 3 nov. 2026, à revérifier avant d\'y aller.';
