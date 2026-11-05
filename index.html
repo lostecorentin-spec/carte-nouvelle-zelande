@@ -622,30 +622,16 @@ $('#close').onclick=closeF;
   const fin=()=>{if(!t)return;const g=t,v=g.dy/Math.max(1,Date.now()-g.at);t=null;if(!g.on)return;f.style.transition='';f.style.transform='';if(g.dy>90||v>.6)closeF()};
   f.addEventListener('touchend',fin);f.addEventListener('touchcancel',fin);
 })();
-const STOP=new Set('les des une dans sur avec pour aux par the and new zealand nouvelle zelande walk track trail beach plage lake lac mont mount musee museum cote coast route sentier balade randonnee vallee valley baie point marche market festival centre center foire jour day visite tour tours atelier ateliers cascades chutes falls river riviere gorge foret forest parc park jardin garden garden gardens sources hot pools'.split(' '));
-const FN=new Set('dans sur avec pour aux par les des une the and'.split(' '));
-const phCache=obj(store.get('ph2',{}));
-async function findPhoto(p){
-  if(p.id in phCache)return phCache[p.id];
-  const w=[...new Set(norm(p.nom).split(/[^a-z0-9]+/).filter(t=>t.length>3&&!STOP.has(t)))].slice(0,4);
-  if(!w.length)return[];
-  const u='https://commons.wikimedia.org/w/api.php?origin=*&action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=20&gsrsearch='+encodeURIComponent(w.join(' ')+' "New Zealand" filetype:bitmap')+'&prop=imageinfo&iiprop=extmetadata&iiextmetadatafilter=Artist|LicenseShortName';
-  const j=await fetch(u).then(r=>r.json());const need=w.length<=2?w.length:w.length-1,base=[...new Set(norm(p.nom).split(/[^a-z0-9]+/).filter(t=>t.length>3&&!FN.has(t)))];
-  const strip=h=>(h||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,40);
-  const r=Object.values(j.query?.pages||{}).sort((a,b)=>a.index-b.index).filter(x=>!/map|logo|plan|diagram|poster|stamp|flag|\.tif|\.png|\.svg|\.pdf/i.test(x.title)&&w.filter(t=>norm(x.title).includes(t)).length>=need&&(w.length>1||base.length<2||base.filter(t=>norm(x.title).includes(t)).length>=2)).slice(0,3).map(x=>{const m=x.imageinfo?.[0]?.extmetadata||{};return[x.title.replace(/^File:/,''),strip(m.Artist?.value)||'Voir Commons',m.LicenseShortName?.value||'']});
-  phCache[p.id]=r;store.set('ph2',phCache);return r;
-}
 function galHTML(ph,nom){const n=ph.length;return `<div class="galw"><div class="gal" tabindex="0" aria-label="Photos">${ph.map((f,k)=>`<figure class="sl" data-k="${k}"><img ${k?'loading="lazy"':''} decoding="async" alt="${esc(nom)}" src="${esc(img(f[0],960))}"></figure>`).join('')}</div>${n>1?`<button class="nav p" aria-label="Photo précédente">‹</button><button class="nav n" aria-label="Photo suivante">›</button><div class="dots">${ph.map((_,k)=>`<i class="${k?'':'on'}"></i>`).join('')}</div>`:''}</div><div class="cred"></div>`}
 function wireGal(box,ph){
   const gal=box.querySelector('.gal'),dots=[...box.querySelectorAll('.dots i')],c=box.querySelector('.cred'),n=ph.length;let cur=0;
-  const cred=k=>{const f=ph[k];c.innerHTML=`Photo : ${esc(f[1])}${f[2]?' · '+esc(f[2]):''} · <a target="_blank" rel="noopener" href="${esc(page(f[0]))}">Wikimedia Commons</a>`};cred(0);
+  const cred=k=>{const f=ph[k];c.innerHTML=`${f[3]==='lieu'?'Photo du lieu, pas de l\'événement · ':''}Photo : ${esc(f[1])}${f[2]?' · '+esc(f[2]):''} · <a target="_blank" rel="noopener" href="${esc(page(f[0]))}">Wikimedia Commons</a>`};cred(0);
   const go=k=>gal.scrollTo({left:gal.clientWidth*((k+n)%n),behavior:'smooth'});
   gal.addEventListener('scroll',()=>{const k=Math.round(gal.scrollLeft/gal.clientWidth);if(k!==cur&&k<n){cur=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k));cred(k)}},{passive:true});
   box.querySelector('.nav.p')?.addEventListener('click',()=>go(cur-1));box.querySelector('.nav.n')?.addEventListener('click',()=>go(cur+1));
   gal.addEventListener('click',e=>{const s=e.target.closest('.sl');if(s&&!s.classList.contains('ko'))lb(ph,+s.dataset.k)});
   ph.slice(1).forEach(f=>{new Image().src=img(f[0],960)});
 }
-const AUTO='Photo trouvée automatiquement d\'après le nom : à vérifier.';
 const dl=p=>p.fields&&p.fields.length?`<dl>${p.fields.map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl>`:'';
 const trLabel=id=>inTrip(id)>=0?'Retirer du trajet':'Ajouter au trajet';
 function acRow(p){
@@ -680,7 +666,6 @@ function fiche(p){
     <div class="tag">${ico(p.cat)}${HOST.includes(p.cat)?'Où loger et travailler':'À voir et à faire'} · ${esc(lab)}${p.classe?` · sélection ${esc(p.classe)}`:''}</div>
     <h2>${esc(p.nom)}</h2>
     ${p.sous?`<div class="sous">${esc(p.sous)}</div>`:''}
-    <div class="note" id="autoN" hidden>${AUTO}</div>
     ${p.desc?`<p id="ftxt">${esc(p.desc)}</p>`:''}
     ${p.cat==='amie'?`<div class="note" id="ftr"></div>`:''}
     ${p.cat==='amie'?`<details><summary>Texte d'origine en anglais</summary><p>${esc(p.orig)}</p></details>`:''}
@@ -701,7 +686,6 @@ function fiche(p){
   $('#fb').scrollTop=0;$('#add').onclick=()=>toggleStage(p.id);$('#pin').onclick=()=>togglePin(p.id);
   if(p.cat==='amie'&&!p.fr)trFiche(p);
   if(ph.length)wireGal($('#hd'),ph);
-  else if(['pole','act','evt'].includes(p.cat))findPhoto(p).then(r=>{if(r.length&&S.sel===p.id){$('#hd').innerHTML=galHTML(r,p.nom);wireGal($('#hd'),r);$('#autoN').hidden=false;document.querySelector('.fc').classList.remove('pad')}}).catch(()=>{});
 }
 $('#fb').addEventListener('click',e=>{
   const b=e.target.closest('[data-open],[data-go],[data-tr],[data-pinl]');if(!b)return;const d=b.dataset;
@@ -716,9 +700,8 @@ $('#fb').addEventListener('toggle',e=>{
   if(!t.open){if(focId===p.id)setFoc(null);return}
   setFoc(p.id);map.easeTo({center:[p.lng,p.lat],zoom:Math.max(map.getZoom(),10),padding:pad(),duration:700});
   if(slot.dataset.done)return;slot.dataset.done=1;
-  if(p.photos.length)return;
-  findPhoto(p).then(r=>{if(!r.length)return;slot.innerHTML=galHTML(r,p.nom)+`<div class="note" style="padding:4px 0 0">${AUTO}</div>`;wireGal(slot,r)}).catch(()=>{});
-},true);
+  if(p.photos.length){slot.innerHTML=galHTML(p.photos,p.nom);wireGal(slot,p.photos)}
+ },true);
 
 /* Plein écran */
 const LB={ph:[],k:0};
