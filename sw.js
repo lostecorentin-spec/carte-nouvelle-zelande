@@ -1,6 +1,6 @@
 /* L'appli s'ouvre depuis le téléphone, sans attendre le réseau.
    Une nouvelle version ne remplace l'ancienne que si elle est téléchargée en entier. */
-const VERSION = '3aada3299e1b', APP = 'appli-' + VERSION, DATA = 'donnees-v1';
+const VERSION = '7183c9bac7fc', APP = 'appli-' + VERSION, DATA = 'donnees-v1';
 const FILES = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => e.waitUntil((async () => {
   const c = await caches.open(APP + '-prep');
